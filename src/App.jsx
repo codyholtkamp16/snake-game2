@@ -14,17 +14,20 @@ const getRandomPosition = () => {
 
 const App = () => {
   const [snake, setSnake] = useState([{ x: 10, y: 10 }]);
-  const [direction, setDirection] = useState({ x: 1, y: 0 });
   const [food, setFood] = useState(getRandomPosition);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const directionRef = useRef(direction);
+  
+  const directionRef = useRef({ x: 1, y: 0 });
+  const nextDirectionRef = useRef({ x: 1, y: 0 });
+  const canChangeDirectionRef = useRef(true);
 
   const resetGame = useCallback(() => {
     setSnake([{ x: 10, y: 10 }]);
-    setDirection({ x: 1, y: 0 });
     directionRef.current = { x: 1, y: 0 };
+    nextDirectionRef.current = { x: 1, y: 0 };
+    canChangeDirectionRef.current = true;
     setFood(getRandomPosition());
     setScore(0);
     setGameOver(false);
@@ -44,27 +47,27 @@ const App = () => {
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();
-          if (directionRef.current.y !== 0) break;
-          setDirection({ x: 0, y: -1 });
-          directionRef.current = { x: 0, y: -1 };
+          if (!canChangeDirectionRef.current || directionRef.current.y !== 0) break;
+          nextDirectionRef.current = { x: 0, y: -1 };
+          canChangeDirectionRef.current = false;
           break;
         case 'ArrowDown':
           e.preventDefault();
-          if (directionRef.current.y !== 0) break;
-          setDirection({ x: 0, y: 1 });
-          directionRef.current = { x: 0, y: 1 };
+          if (!canChangeDirectionRef.current || directionRef.current.y !== 0) break;
+          nextDirectionRef.current = { x: 0, y: 1 };
+          canChangeDirectionRef.current = false;
           break;
         case 'ArrowLeft':
           e.preventDefault();
-          if (directionRef.current.x !== 0) break;
-          setDirection({ x: -1, y: 0 });
-          directionRef.current = { x: -1, y: 0 };
+          if (!canChangeDirectionRef.current || directionRef.current.x !== 0) break;
+          nextDirectionRef.current = { x: -1, y: 0 };
+          canChangeDirectionRef.current = false;
           break;
         case 'ArrowRight':
           e.preventDefault();
-          if (directionRef.current.x !== 0) break;
-          setDirection({ x: 1, y: 0 });
-          directionRef.current = { x: 1, y: 0 };
+          if (!canChangeDirectionRef.current || directionRef.current.x !== 0) break;
+          nextDirectionRef.current = { x: 1, y: 0 };
+          canChangeDirectionRef.current = false;
           break;
       }
     };
@@ -78,25 +81,21 @@ const App = () => {
 
     const gameLoop = setInterval(() => {
       setSnake(prevSnake => {
+        directionRef.current = nextDirectionRef.current;
+        canChangeDirectionRef.current = true;
+        
         const head = prevSnake[0];
         const newHead = {
           x: head.x + directionRef.current.x,
           y: head.y + directionRef.current.y
         };
 
-        // Wall collision
-        if (
-          newHead.x < 0 ||
-          newHead.x >= GRID_SIZE ||
-          newHead.y < 0 ||
-          newHead.y >= GRID_SIZE
-        ) {
+        if (newHead.x < 0 || newHead.x >= GRID_SIZE || newHead.y < 0 || newHead.y >= GRID_SIZE) {
           setGameOver(true);
           setIsPlaying(false);
           return prevSnake;
         }
 
-        // Self collision
         if (prevSnake.some(segment => segment.x === newHead.x && segment.y === newHead.y)) {
           setGameOver(true);
           setIsPlaying(false);
@@ -105,7 +104,6 @@ const App = () => {
 
         const newSnake = [newHead, ...prevSnake];
 
-        // Food collision
         if (newHead.x === food.x && newHead.y === food.y) {
           setScore(prev => prev + 10);
           setFood(getRandomPosition());
